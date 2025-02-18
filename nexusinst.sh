@@ -18,6 +18,3 @@ rustup update
 # Завершаем существующую tmux-сессию "nexus", если она есть
 tmux kill-session -t nexus 2>/dev/null || true
 
-# Создаём новую tmux-сессию "nexus" в фоновом режиме
-tmux new-session -d -s nexus
-tmux attach -t nexus

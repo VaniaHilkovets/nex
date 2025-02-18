@@ -20,9 +20,3 @@ tmux kill-session -t nexus 2>/dev/null || true
 
 # Создаём новую tmux-сессию "nexus" в фоновом режиме
 tmux new-session -d -s nexus
-
-# Отправляем команду установки Nexus в сессию.
-# Используем expect для автоматического ответа "Y" при появлении запроса.
-tmux send-keys -t nexus "expect -c 'set timeout -1; \
-  spawn curl https://cli.nexus.xyz/ | sh; \
-  expect { -re \"Do you want to continue.*\" { send \"Y\r\"; exp_continue } eof { exit } }'" C-m

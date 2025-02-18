@@ -1,53 +1,43 @@
 #!/bin/bash
 set -e
 
-# Проверка наличия curl и установка, если не установлен
-if ! command -v curl >/dev/null 2>&1; then
-    sudo apt update
-    sudo apt install -y curl
-fi
-sleep 1
-
-# Проверка версии Ubuntu
-REQUIRED_VERSION=22.04
-UBUNTU_VERSION=$(lsb_release -rs)
-if (( $(echo "$UBUNTU_VERSION < $REQUIRED_VERSION" | bc -l) )); then
-    echo "Для этой ноды нужна минимальная версия Ubuntu $REQUIRED_VERSION"
-    exit 1
-fi
-
-echo "Устанавливаем ноду Nexus..."
-
-# Обновление системы и установка необходимых компонентов
+# Обновление системы и установка необходимых пакетов
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler cargo screen
+sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler cargo tmux expect curl
 
-# Установка Rust (без интерактивного подтверждения)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+# Установка Rust, если он не установлен
+if ! command -v rustup >/dev/null 2>&1; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source "$HOME/.cargo/env"
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+fi
 rustup update
 
-# Завершение предыдущих сессий screen с именем nexus, если они есть
-SESSION_IDS=$(screen -ls | grep "nexus" | awk '{print $1}' | cut -d '.' -f 1)
-if [ -n "$SESSION_IDS" ]; then
-    echo "Завершаем ранее запущенные сессии screen: $SESSION_IDS"
-    for SESSION_ID in $SESSION_IDS; do
-        screen -S "$SESSION_ID" -X quit
-    done
-fi
+# Завершение существующей tmux-сессии с именем nexus, если она существует
+tmux kill-session -t nexus 2>/dev/null || true
 
-# Создание новой screen-сессии с именем nexus
-screen -dmS nexus
+# Создание временного Expect-скрипта для автоматического ответа "Y"
+cat > ~/install_nexus.expect << 'EOF'
+#!/usr/bin/expect -f
+# Запускаем установку через curl, ожидая приглашения и отвечая Y
+spawn curl https://cli.nexus.xyz/ | sh
+expect {
+    -re "Do you want to continue.*" {
+        send "Y\r"
+        exp_continue
+    }
+    eof
+}
+EOF
 
-echo "Нода запущена в screen-сессии 'nexus'."
-echo "Для перехода в сессию используйте:"
-echo "screen -r nexus"
+chmod +x ~/install_nexus.expect
 
-# Автоматический переход в сессию (если запуск из интерактивного терминала)
-if [ -t 0 ]; then
-    screen -r nexus
-fi
+# Создание новой tmux-сессии с именем nexus в фоновом режиме
+tmux new-session -d -s nexus
 
+# Запуск Expect-скрипта внутри tmux-сессии
+tmux send-keys -t nexus "~/install_nexus.expect" C-m
+
+# Переход в созданную tmux-сессию
+tmux attach-session -t nexus

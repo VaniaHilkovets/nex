@@ -26,6 +26,3 @@ tmux new-session -d -s nexus
 tmux send-keys -t nexus "expect -c 'set timeout -1; \
   spawn curl https://cli.nexus.xyz/ | sh; \
   expect { -re \"Do you want to continue.*\" { send \"Y\r\"; exp_continue } eof { exit } }'" C-m
-
-# Подключаемся к tmux-сессии "nexus"
-tmux attach -t nexus

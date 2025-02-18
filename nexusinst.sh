@@ -11,9 +11,9 @@ fi
 
 echo "Устанавливаем необходимые пакеты и Rust..."
 
-# Обновление системы и установка зависимостей
+# Обновление системы и установка зависимостей (добавлен пакет bc)
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl build-essential pkg-config libssl-dev git-all protobuf-compiler cargo screen
+sudo apt install -y curl build-essential pkg-config libssl-dev git-all protobuf-compiler cargo screen bc
 
 # Установка Rust (если ещё не установлен)
 if ! command -v rustc &> /dev/null; then
@@ -41,12 +41,16 @@ screen -dmS nexus bash -c "
   chmod +x /tmp/nexus_installer.sh
   # Автоматически подтверждаем (Yes) условия, которые запрашивает инсталлятор
   yes Y | /tmp/nexus_installer.sh
-  echo 'Nexus установлен. Оставляем сессию открытой. Нажмите Enter или Ctrl+C для выхода.'
+  echo 'Nexus установлен. Сессия остаётся открытой. Нажмите Enter или Ctrl+C для выхода.'
   read
 "
 
-echo "Нода Nexus запущена в screen-сессии 'nexus'. Переходим в сессию..."
-sleep 2
+echo "Нода Nexus запущена в screen-сессии 'nexus'."
 
-# Подключаемся к созданной screen-сессии
-screen -r nexus
+# Подключаемся к созданной screen-сессии, если скрипт запущен из интерактивного терминала
+if [ -t 0 ]; then
+    echo "Переходим в screen-сессию..."
+    screen -r nexus
+else
+    echo "Неинтерактивная оболочка: screen-сессия запущена, но не подключаемся."
+fi
